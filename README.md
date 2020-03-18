@@ -1,4 +1,5 @@
 # Traefik-influxdb
 Playing with Docker Compose.
-
-docker-compose up -f https://raw.githubusercontent.com/vegarberget/Traefik-influxdb/master/docker-compose.yml -d 
+git clone https://github.com/vegarberget/Traefik-influxdb.git
+cd Traefik-influxdb
+docker-compose up -d 
