@@ -1,0 +1,66 @@
+version: '3.3'
+
+services:
+  reverse-proxy:
+    image: "traefik:v2.2"
+    container_name: "traefik"
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=true"
+      - "--entrypoints.web.address=:80"
+      - "--providers.file.directory=/opt/providers"
+      - "--providers.consul.endpoints=192.168.2.201:8500"
+      - "--providers.consul.tls.insecureSkipVerify=true"
+      - "--tracing.jaeger=true"
+      - "--tracing.jaeger.samplingServerURL=http://192.168.254.21:5778/sampling"
+      - "--tracing.jaeger.collector.endpoint=http://192.168.254.21:14268/api/traces?format=jaeger.thrift"
+      - "--tracing.jaeger.localAgentHostPort=192.168.254.21:6831"
+    ports:
+      # The HTTP port
+      - "80:80"
+      # The Web UI (enabled by --api.insecure=true)
+      - "8080:8080"
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /opt/traefik2.2/providers/:/opt/providers/
+
+# ...
+  influxdb:
+    # A container that exposes an API to show its IP address
+    image: quay.io/influxdb/influxdb:2.0.0-beta
+    labels:
+      - "traefik.http.routers.influxdb.rule=Host(`influxdb.iooi.no`)"
+    ports:
+      #- "8082:8082"
+      - "8086:9999" 
+      #- "8089:8089"
+    #command: -v 
+    volumes:
+      - '/mnt/data/influxdb:/root/.influxdbv2'
+      #- '/mnt/data/influxdb/influxdb.conf:/etc/influxdb/influxdb.conf'
+    environment:
+      - INFLUXDB_DB=telegrafdb
+   # command: -e INFLUXDB_DB=telegraf -e INFLUXDB_ADMIN_ENABLED=true -e INFLUXDB_ADMIN_USER=admin -e INFLUXDB_ADMIN_PASSWORD=8Soothing -e INFLUXDB_USER=vegar -e INFLUXDB_USER_PASSWORD=8Soothing 
+# ...
+  grafana:
+    # A container that exposes an API to show its IP address
+    image: grafana/grafana
+    labels:
+      - "traefik.http.routers.grafana.rule=Host(`grafana.iooi.no`)"
+# ...
+  jaeger:
+    # A container that exposes an API to show its IP address
+    image: jaegertracing/all-in-one:latest
+    ports:
+     - "5775:5775/udp"
+     - "6831:6831/udp"
+     - "6832:6832/udp"
+     - "5778:5778"
+     - "14268:14268"
+     - "9411:9411"
+    labels:
+     - "traefik.http.routers.jaeger.rule=Host(`jaeger.iooi.no`)"
+     - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
